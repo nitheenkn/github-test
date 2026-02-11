@@ -1,0 +1,49 @@
+name: "JFrog CLI npm Publish OIDC"
+on: push
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JFrog CLI
+        id: setup-jfrog
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: https://migration3.jfrog.io 
+        with:
+          oidc-provider-name: git-test 
+          oidc-audience: my-aud
+
+      - name: Debug OIDC Token Exchange
+        # This implementation follows the "Under the Hood" debugging guide
+        run: |
+          echo "--- Phase 1: Requesting Identity ---"
+          # We use jfrog-github as the audience example from the guide; 
+          # ensure this matches your 'my-aud' if that is what JFrog expects.
+          ID_TOKEN=$(curl -sLS -H "User-Agent: actions/oidc-client" \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=my-aud" \
+            | jq -r .value)
+          
+          echo "--- Phase 2: Inspecting Subject Token ---"
+          # GitHub automatically masks the token as *** for security. 
+          # To see the structure, we decode the payload (middle part of the JWT).
+          echo "Decoded Payload (Claims):"
+          echo "$ID_TOKEN" | cut -d "." -f 2 | base64 -d | jq .
+
+      - name: npm Publish to Artifactory
+        working-directory: ./npm-test
+        run: |
+          jf npm-config --repo-deploy=github-npm --repo-resolve=github-npm
+          jf npm install
+          jf npm publish --build-name=npm-build --build-number=${{ github.run_id }}
+          jf rt bce npm-build ${{ github.run_id }}
+          jf rt bag npm-build ${{ github.run_id }}
+          jf rt bp npm-build ${{ github.run_id }}
