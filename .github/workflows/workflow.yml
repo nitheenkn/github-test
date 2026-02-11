@@ -16,7 +16,7 @@ jobs:
         id: setup-jfrog
         uses: jfrog/setup-jfrog-cli@v4
         env:
-          JF_URL: https://migration3.jfrog.io 
+          JF_URL: https://migration1.jfrog.io 
         with:
           oidc-provider-name: git-test 
           oidc-audience: my-aud
