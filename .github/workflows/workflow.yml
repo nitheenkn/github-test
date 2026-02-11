@@ -18,7 +18,7 @@ jobs:
         env:
           JF_URL: https://migration1.jfrog.io 
         with:
-          oidc-provider-name: github-test1
+          oidc-provider-name: github-test
           oidc-audience: my-aud
 
       - name: Debug OIDC Token Exchange
